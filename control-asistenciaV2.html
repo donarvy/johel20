@@ -318,7 +318,7 @@
                 
                 if (tipo === 'entrada') {
                     // Verificar si ya hay una entrada para hoy sin salida registrada
-                    const entradaHoySinSalida = registros.find(r => r.fecha === fecha && r.horaEntrada && !r.horaSalida);
+                    const entradaHoySinSalida = registros.find(r => r.fecha === fecha && r.horaEntrada && !r.horaSalida && r.tiempoTotal);
                     
                     if (entradaHoySinSalida) {
                         // Si hay una entrada sin salida, actualizamos la hora de entrada
@@ -330,6 +330,7 @@
                             fecha: fecha,
                             horaEntrada: hora,
                             horaSalida: null
+                            tiempoTotal:tiempoTotal
                         });
                         mostrarMensaje(`Nueva entrada registrada: ${fecha} ${hora}`, 'success');
                     }
@@ -368,7 +369,7 @@
             function actualizarArchivoTextarea() {
                 let contenido = '';
                 memoryStorage.registrosAsistencia.forEach(registro => {
-                    contenido += `${registro.fecha}|${registro.horaEntrada || ''}|${registro.horaSalida || ''}\n`;
+                    contenido += `${registro.fecha}|${registro.horaEntrada || ''}|${registro.horaSalida || ''}|${registro.tiempoTotal || ''}\n`;
                 });
                 archivoRegistros.value = contenido;
             }
@@ -387,7 +388,8 @@
                             registros.push({
                                 fecha: partes[0],
                                 horaEntrada: partes[1] || null,
-                                horaSalida: partes[2] || null
+                                horaSalida: partes[2] || null,
+                                 tiempoTotal: partes[3] || null
                             });
                         }
                     }
@@ -561,6 +563,7 @@ if (registro.horaEntrada && registro.horaSalida) {
                         r => r.fecha === registro.fecha && 
                         r.horaEntrada === registro.horaEntrada && 
                         r.horaSalida === registro.horaSalida
+                         r.tiempoTotal === registro.tiempoTotal
                     );
                     
                     fila.innerHTML = `
