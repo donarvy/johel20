@@ -38,7 +38,7 @@
             margin-top: 10px;
         }
         .btn-active {
-            background-color: #0d6efd !important; /* Azul más oscuro para botón activo */
+            background-color: #0d6efd !important;
             border-color: #0a58ca !important;
             color: white !important;
         }
@@ -300,7 +300,7 @@
             btnConfirmDelete.addEventListener('click', function() {
                 if (registroEliminarIndice !== -1) {
                     memoryStorage.registrosAsistencia.splice(registroEliminarIndice, 1);
-                    guardarDatos(); // Guardar en localStorage después de eliminar
+                    guardarDatos();
                     actualizarArchivoTextarea();
                     modalConfirmDelete.hide();
                     mostrarMensaje('Registro eliminado correctamente', 'success');
@@ -312,13 +312,13 @@
             function registrarAsistencia(tipo) {
                 const ahora = new Date();
                 const fecha = ahora.toISOString().split('T')[0]; // YYYY-MM-DD
-                const hora = ahora.toLocaleTimeString(); // HH:MM:SS
+                const hora = ahora.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); // HH:MM
                 
                 let registros = memoryStorage.registrosAsistencia;
                 
                 if (tipo === 'entrada') {
                     // Verificar si ya hay una entrada para hoy sin salida registrada
-                    const entradaHoySinSalida = registros.find(r => r.fecha === fecha && r.horaEntrada && !r.horaSalida && r.tiempoTotal);
+                    const entradaHoySinSalida = registros.find(r => r.fecha === fecha && r.horaEntrada && !r.horaSalida);
                     
                     if (entradaHoySinSalida) {
                         // Si hay una entrada sin salida, actualizamos la hora de entrada
@@ -329,8 +329,8 @@
                         registros.push({
                             fecha: fecha,
                             horaEntrada: hora,
-                            horaSalida: null
-                            tiempoTotal:tiempoTotal
+                            horaSalida: null,
+                            tiempoTotal: null
                         });
                         mostrarMensaje(`Nueva entrada registrada: ${fecha} ${hora}`, 'success');
                     }
@@ -345,6 +345,28 @@
                     
                     // Actualizar la hora de salida
                     entradaSinSalida.horaSalida = hora;
+                    
+                    // Calcular tiempo total
+                    if (entradaSinSalida.horaEntrada && entradaSinSalida.horaSalida) {
+                        const [hEntrada, mEntrada] = entradaSinSalida.horaEntrada.split(':').map(Number);
+                        const [hSalida, mSalida] = entradaSinSalida.horaSalida.split(':').map(Number);
+                        
+                        const totalMinutosEntrada = hEntrada * 60 + mEntrada;
+                        const totalMinutosSalida = hSalida * 60 + mSalida;
+                        
+                        let diferenciaMinutos = totalMinutosSalida - totalMinutosEntrada;
+                        
+                        // Si la salida es antes que la entrada (día siguiente)
+                        if (diferenciaMinutos < 0) {
+                            diferenciaMinutos += 24 * 60; // Añadir 24 horas
+                        }
+                        
+                        const horas = Math.floor(diferenciaMinutos / 60);
+                        const minutos = diferenciaMinutos % 60;
+                        
+                        entradaSinSalida.tiempoTotal = `${horas}h ${minutos}m`;
+                    }
+                    
                     mostrarMensaje(`Salida registrada: ${fecha} ${hora}`, 'success');
                 }
                 
@@ -354,7 +376,6 @@
                 
                 // Actualizar el reporte activo o el diario por defecto
                 if (botonReporteActivo) {
-                    // Determinar qué reporte generar según el botón activo
                     const id = botonReporteActivo.id;
                     if (id === 'btnReporteDiario') generarReporte('diario');
                     else if (id === 'btnReporteSemanal') generarReporte('semanal');
@@ -389,14 +410,14 @@
                                 fecha: partes[0],
                                 horaEntrada: partes[1] || null,
                                 horaSalida: partes[2] || null,
-                                 tiempoTotal: partes[3] || null
+                                tiempoTotal: partes[3] || null
                             });
                         }
                     }
                 });
                 
                 memoryStorage.registrosAsistencia = registros;
-                guardarDatos(); // Guardar en localStorage después de actualizar
+                guardarDatos();
             }
 
             // Función para descargar el archivo TXT
@@ -418,200 +439,3 @@
             }
 
             // Función para mostrar mensajes
-            function mostrarMensaje(mensaje, tipo) {
-                mensajeRegistro.textContent = mensaje;
-                mensajeRegistro.style.display = 'block';
-                
-                // Cambiar clase del mensaje según tipo
-                mensajeRegistro.className = 'alert';
-                switch(tipo) {
-                    case 'success':
-                        mensajeRegistro.classList.add('alert-success');
-                        break;
-                    case 'warning':
-                        mensajeRegistro.classList.add('alert-warning');
-                        break;
-                    default:
-                        mensajeRegistro.classList.add('alert-info');
-                }
-                
-                // Ocultar después de 3 segundos
-                setTimeout(() => {
-                    mensajeRegistro.style.display = 'none';
-                }, 3000);
-            }
-
-            // Función para generar reportes
-            function generarReporte(tipo) {
-                const registros = memoryStorage.registrosAsistencia;
-                let registrosFiltrados = [];
-                
-                const inicio = new Date(fechaInicio.value);
-                const fin = new Date(fechaFin.value);
-                fin.setHours(23, 59, 59); // Fin del día
-                
-                const hoy = new Date();
-                const inicioSemana = new Date(hoy);
-                inicioSemana.setDate(hoy.getDate() - hoy.getDay()); // Inicio de la semana (domingo)
-                
-                const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1); // Primer día del mes
-                
-                switch(tipo) {
-                    case 'diario':
-                        // Filtrar por fecha seleccionada o hoy
-                        const fechaHoy = hoy.toISOString().split('T')[0];
-                        registrosFiltrados = registros.filter(r => r.fecha === fechaInicio.value || r.fecha === fechaHoy);
-                        break;
-                    case 'semanal':
-                        // Filtrar registros de esta semana
-                        registrosFiltrados = registros.filter(r => {
-                            const fechaReg = new Date(r.fecha);
-                            return fechaReg >= inicioSemana && fechaReg <= hoy;
-                        });
-                        break;
-                    case 'mensual':
-                        // Filtrar registros de este mes
-                        registrosFiltrados = registros.filter(r => {
-                            const fechaReg = new Date(r.fecha);
-                            return fechaReg >= inicioMes && fechaReg <= hoy;
-                        });
-                        break;
-                    case 'todos':
-                        // Filtrar por rango de fechas seleccionado
-                        registrosFiltrados = registros.filter(r => {
-                            const fechaReg = new Date(r.fecha);
-                            return fechaReg >= inicio && fechaReg <= fin;
-                        });
-                        break;
-                }
-                
-                mostrarTablaReportes(registrosFiltrados);
-            }
-
-            // Función para mostrar la tabla de reportes
-            function mostrarTablaReportes(registros) {
-                tablaReportes.innerHTML = '';
-                
-                if (registros.length === 0) {
-                    const fila = document.createElement('tr');
-                    fila.innerHTML = '<td colspan="5" class="text-center">No hay registros en este período</td>';
-                    tablaReportes.appendChild(fila);
-                    return;
-                }
-                
-                registros.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-                
-                registros.forEach(registro => {
-                    const fila = document.createElement('tr');
-
-
-
-
-                    
-                // Calcular tiempo total
-let tiempoTotal = 'N/A';
-if (registro.horaEntrada && registro.horaSalida) {
-    try {
-        // Asegurarnos de que tenemos un formato de fecha válido
-        const fechaBase = registro.fecha || new Date().toISOString().split('T')[0];
-        
-        // Convertir horas a objetos Date de forma más segura
-        const [horasEntrada, minutosEntrada] = registro.horaEntrada.split(':').map(Number);
-        const [horasSalida, minutosSalida] = registro.horaSalida.split(':').map(Number);
-        
-        // Crear objetos Date para entrada y salida
-        const entrada = new Date();
-        entrada.setHours(horasEntrada, minutosEntrada, 0);
-        
-        const salida = new Date();
-        salida.setHours(horasSalida, minutosSalida, 0);
-        
-        // Si la salida es antes que la entrada, podría ser del día siguiente
-        let diff;
-        if (salida < entrada) {
-            // Añadir 24 horas a la salida
-            salida.setTime(salida.getTime() + (24 * 60 * 60 * 1000));
-        }
-        
-        // Calcular la diferencia en milisegundos
-        diff = salida - entrada;
-        
-        // Convertir a horas y minutos
-        const horas = Math.floor(diff / (1000 * 60 * 60));
-        const minutos = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        
-        // Formato de tiempo
-        tiempoTotal = `${horas}h ${minutos}m`;
-        
-        // Verificar que el resultado sea un número válido
-        if (tiempoTotal.includes('NaN')) {
-            tiempoTotal = 'Error en cálculo';
-            console.error('Error en cálculo de tiempo:', { entrada: registro.horaEntrada, salida: registro.horaSalida });
-        }
-    } catch (error) {
-        console.error('Error al calcular tiempo:', error);
-        tiempoTotal = 'Error';
-    }
-}
-
-
-
-                    
-                    
-                    // Obtener índice original en el array completo para poder eliminar
-                    const indiceOriginal = memoryStorage.registrosAsistencia.findIndex(
-                        r => r.fecha === registro.fecha && 
-                        r.horaEntrada === registro.horaEntrada && 
-                        r.horaSalida === registro.horaSalida
-                         r.tiempoTotal === registro.tiempoTotal
-                    );
-                    
-                    fila.innerHTML = `
-                        <td>${formatearFecha(registro.fecha)}</td>
-                        <td>${registro.horaEntrada || 'No registrado'}</td>
-                        <td>${registro.horaSalida || 'No registrado'}</td>
-                        <td>${tiempoTotal}</td>
-                        <td>
-                            <i class="bi bi-trash btn-delete" data-index="${indiceOriginal}" title="Eliminar registro"></i>
-                        </td>
-                    `;
-                    
-                    tablaReportes.appendChild(fila);
-                });
-                
-                // Agregar eventos a los botones de eliminar
-                document.querySelectorAll('.btn-delete').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const indice = parseInt(this.getAttribute('data-index'));
-                        if (indice >= 0) {
-                            registroEliminarIndice = indice;
-                            const registro = memoryStorage.registrosAsistencia[indice];
-                            registroAEliminar.textContent = `Fecha: ${formatearFecha(registro.fecha)}, Entrada: ${registro.horaEntrada || 'No registrado'}, Salida: ${registro.horaSalida || 'No registrado'}`;
-                            modalConfirmDelete.show();
-                        }
-                    });
-                });
-            }
-
-            // Función para formatear la fecha
-           
-function formatearFecha(fechaStr) {
-    const opciones = { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        timeZone: 'UTC' // Añade esta línea
-    };
-    // Asegúrate de que la fecha se interprete como UTC
-    const [year, month, day] = fechaStr.split('-');
-    const fecha = new Date(Date.UTC(year, month - 1, day));
-    return fecha.toLocaleDateString('es-ES', opciones);
-}
-            // Activar el reporte diario al iniciar
-            activarBotonReporte(btnReporteDiario);
-            generarReporte('diario');
-        });
-    </script>
-</body>
-</html>
