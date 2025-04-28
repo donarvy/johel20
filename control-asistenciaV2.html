@@ -125,7 +125,7 @@
                         </div>
                         <textarea id="archivoRegistros" spellcheck="false"></textarea>
                         <div class="alert alert-secondary mt-2" role="alert">
-                            <small><i class="bi bi-info-circle"></i> Formato: fecha|horaEntrada|horaSalida|tiempoTotal (un registro por línea)</small>
+                            <small><i class="bi bi-info-circle"></i> Formato: fecha|horaEntrada|horaSalida (un registro por línea)</small>
                         </div>
                     </div>
                 </div>
@@ -157,9 +157,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Actividad de consola para depuración
-            console.log("Script inicializado");
-            
             // Almacenamiento con persistencia en localStorage
             let memoryStorage = {
                 registrosAsistencia: []
@@ -171,7 +168,6 @@
                 if (datosGuardados) {
                     try {
                         memoryStorage.registrosAsistencia = JSON.parse(datosGuardados);
-                        console.log("Datos cargados:", memoryStorage.registrosAsistencia);
                     } catch (e) {
                         console.error('Error al cargar datos guardados:', e);
                         memoryStorage.registrosAsistencia = [];
@@ -182,7 +178,6 @@
             // Guardar datos en localStorage
             function guardarDatos() {
                 localStorage.setItem('registrosAsistencia', JSON.stringify(memoryStorage.registrosAsistencia));
-                console.log("Datos guardados:", memoryStorage.registrosAsistencia);
             }
 
             // Cargar datos al iniciar
@@ -214,10 +209,6 @@
             const btnConfirmDelete = document.getElementById('btnConfirmDelete');
             const botonesReporte = document.querySelectorAll('.btn-reporte');
             
-            // Verificar elementos DOM
-            console.log("Botón Entrada:", btnEntrada);
-            console.log("Botón Salida:", btnSalida);
-            
             // Modal de confirmación
             const modalConfirmDelete = new bootstrap.Modal(document.getElementById('modalConfirmDelete'));
             
@@ -231,26 +222,14 @@
             // Actualizar el textarea con los datos cargados
             actualizarArchivoTextarea();
 
-            // Evento para botón de entrada - Con manejo explícito de errores
+            // Evento para botón de entrada
             btnEntrada.addEventListener('click', function() {
-                console.log("Botón entrada clickeado");
-                try {
-                    registrarAsistencia('entrada');
-                } catch (error) {
-                    console.error("Error al registrar entrada:", error);
-                    mostrarMensaje("Error al registrar entrada: " + error.message, "warning");
-                }
+                registrarAsistencia('entrada');
             });
 
-            // Evento para botón de salida - Con manejo explícito de errores
+            // Evento para botón de salida
             btnSalida.addEventListener('click', function() {
-                console.log("Botón salida clickeado");
-                try {
-                    registrarAsistencia('salida');
-                } catch (error) {
-                    console.error("Error al registrar salida:", error);
-                    mostrarMensaje("Error al registrar salida: " + error.message, "warning");
-                }
+                registrarAsistencia('salida');
             });
 
             // Eventos para botones de reportes
@@ -329,35 +308,11 @@
                 }
             });
 
-            // Función para obtener la fecha actual en formato YYYY-MM-DD garantizando la fecha correcta en zona horaria local
-            function obtenerFechaActual() {
-                const now = new Date();
-                const year = now.getFullYear();
-                const month = String(now.getMonth() + 1).padStart(2, '0');
-                const day = String(now.getDate()).padStart(2, '0');
-                const fechaActual = `${year}-${month}-${day}`;
-                console.log("Fecha actual generada:", fechaActual);
-                return fechaActual;
-            }
-
-            // Función para obtener hora actual con formato HH:MM:SS
-            function obtenerHoraActual() {
-                const now = new Date();
-                const hours = String(now.getHours()).padStart(2, '0');
-                const minutes = String(now.getMinutes()).padStart(2, '0');
-                const seconds = String(now.getSeconds()).padStart(2, '0');
-                return `${hours}:${minutes}:${seconds}`;
-            }
-
-            // Función para registrar asistencia con persistencia - Reescrita con más validaciones
+            // Función para registrar asistencia con persistencia
             function registrarAsistencia(tipo) {
-                console.log(`Iniciando registro de ${tipo}`);
-                
-                // Obtener fecha y hora actual
-                const fecha = obtenerFechaActual();
-                const hora = obtenerHoraActual();
-                
-                console.log(`Fecha: ${fecha}, Hora: ${hora}`);
+                const ahora = new Date();
+                const fecha = ahora.toISOString().split('T')[0]; // YYYY-MM-DD
+                const hora = ahora.toLocaleTimeString(); // HH:MM:SS
                 
                 let registros = memoryStorage.registrosAsistencia;
                 
@@ -369,18 +324,14 @@
                         // Si hay una entrada sin salida, actualizamos la hora de entrada
                         entradaHoySinSalida.horaEntrada = hora;
                         mostrarMensaje(`Entrada actualizada: ${fecha} ${hora}`, 'success');
-                        console.log("Entrada actualizada:", entradaHoySinSalida);
                     } else {
                         // Si no hay una entrada sin salida, creamos un nuevo registro
-                        const nuevoRegistro = {
+                        registros.push({
                             fecha: fecha,
                             horaEntrada: hora,
-                            horaSalida: null,
-                            tiempoTotal: null
-                        };
-                        registros.push(nuevoRegistro);
+                            horaSalida: null
+                        });
                         mostrarMensaje(`Nueva entrada registrada: ${fecha} ${hora}`, 'success');
-                        console.log("Nueva entrada registrada:", nuevoRegistro);
                     }
                 } else if (tipo === 'salida') {
                     // Buscar registro sin salida para actualizarlo
@@ -388,18 +339,12 @@
                     
                     if (!entradaSinSalida) {
                         mostrarMensaje('No hay entrada sin salida registrada para hoy.', 'warning');
-                        console.log("No se encontró entrada sin salida para hoy");
                         return;
                     }
                     
                     // Actualizar la hora de salida
                     entradaSinSalida.horaSalida = hora;
-                    
-                    // Calcular y guardar el tiempo total
-                    entradaSinSalida.tiempoTotal = calcularTiempoTotal(entradaSinSalida.horaEntrada, entradaSinSalida.horaSalida);
-                    
                     mostrarMensaje(`Salida registrada: ${fecha} ${hora}`, 'success');
-                    console.log("Salida registrada y tiempo calculado:", entradaSinSalida);
                 }
                 
                 // Guardar datos actualizados
@@ -419,62 +364,13 @@
                 }
             }
 
-            // Función para calcular el tiempo total entre entrada y salida
-            function calcularTiempoTotal(horaEntrada, horaSalida) {
-                if (!horaEntrada || !horaSalida) return null;
-                
-                try {
-                    console.log(`Calculando tiempo entre ${horaEntrada} y ${horaSalida}`);
-                    
-                    // Convertir horas a segundos para facilitar el cálculo
-                    function horaASegundos(hora) {
-                        const partes = hora.split(':').map(Number);
-                        return partes[0] * 3600 + partes[1] * 60 + (partes[2] || 0);
-                    }
-                    
-                    let segundosEntrada = horaASegundos(horaEntrada);
-                    let segundosSalida = horaASegundos(horaSalida);
-                    
-                    console.log(`Segundos entrada: ${segundosEntrada}, Segundos salida: ${segundosSalida}`);
-                    
-                    // Si la salida es menor que la entrada, asumimos que es del día siguiente
-                    if (segundosSalida < segundosEntrada) {
-                        segundosSalida += 24 * 3600; // Añadir un día en segundos
-                        console.log("Ajustando para día siguiente, segundos salida:", segundosSalida);
-                    }
-                    
-                    let diferenciaSegundos = segundosSalida - segundosEntrada;
-                    console.log("Diferencia en segundos:", diferenciaSegundos);
-                    
-                    // Convertir segundos a formato hh:mm:ss
-                    const horas = Math.floor(diferenciaSegundos / 3600);
-                    diferenciaSegundos %= 3600;
-                    const minutos = Math.floor(diferenciaSegundos / 60);
-                    const segundos = diferenciaSegundos % 60;
-                    
-                    // Formato con ceros a la izquierda
-                    const horasStr = String(horas).padStart(2, '0');
-                    const minutosStr = String(minutos).padStart(2, '0');
-                    const segundosStr = String(segundos).padStart(2, '0');
-                    
-                    const resultado = `${horasStr}:${minutosStr}:${segundosStr}`;
-                    console.log("Tiempo calculado:", resultado);
-                    
-                    return resultado;
-                } catch (error) {
-                    console.error('Error al calcular tiempo total:', error);
-                    return 'Error';
-                }
-            }
-
             // Función para actualizar el textarea con los datos actuales
             function actualizarArchivoTextarea() {
                 let contenido = '';
                 memoryStorage.registrosAsistencia.forEach(registro => {
-                    contenido += `${registro.fecha}|${registro.horaEntrada || ''}|${registro.horaSalida || ''}|${registro.tiempoTotal || ''}\n`;
+                    contenido += `${registro.fecha}|${registro.horaEntrada || ''}|${registro.horaSalida || ''}\n`;
                 });
                 archivoRegistros.value = contenido;
-                console.log("Textarea actualizado");
             }
 
             // Función para leer los datos desde el textarea
@@ -488,19 +384,11 @@
                     if (linea) {
                         const partes = linea.split('|');
                         if (partes.length >= 2) {
-                            const registro = {
+                            registros.push({
                                 fecha: partes[0],
                                 horaEntrada: partes[1] || null,
-                                horaSalida: partes[2] || null,
-                                tiempoTotal: partes[3] || null
-                            };
-                            
-                            // Si no hay tiempo total pero hay entrada y salida, calcularlo
-                            if (!registro.tiempoTotal && registro.horaEntrada && registro.horaSalida) {
-                                registro.tiempoTotal = calcularTiempoTotal(registro.horaEntrada, registro.horaSalida);
-                            }
-                            
-                            registros.push(registro);
+                                horaSalida: partes[2] || null
+                            });
                         }
                     }
                 });
@@ -553,7 +441,6 @@
 
             // Función para generar reportes
             function generarReporte(tipo) {
-                console.log(`Generando reporte tipo: ${tipo}`);
                 const registros = memoryStorage.registrosAsistencia;
                 let registrosFiltrados = [];
                 
@@ -570,7 +457,7 @@
                 switch(tipo) {
                     case 'diario':
                         // Filtrar por fecha seleccionada o hoy
-                        const fechaHoy = obtenerFechaActual();
+                        const fechaHoy = hoy.toISOString().split('T')[0];
                         registrosFiltrados = registros.filter(r => r.fecha === fechaInicio.value || r.fecha === fechaHoy);
                         break;
                     case 'semanal':
@@ -596,7 +483,6 @@
                         break;
                 }
                 
-                console.log(`Registros filtrados (${tipo}):`, registrosFiltrados);
                 mostrarTablaReportes(registrosFiltrados);
             }
 
@@ -608,33 +494,67 @@
                     const fila = document.createElement('tr');
                     fila.innerHTML = '<td colspan="5" class="text-center">No hay registros en este período</td>';
                     tablaReportes.appendChild(fila);
-                    console.log("No hay registros para mostrar");
                     return;
                 }
                 
                 registros.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
                 
-                registros.forEach((registro, idx) => {
-                    console.log(`Procesando registro ${idx}:`, registro);
+                registros.forEach(registro => {
                     const fila = document.createElement('tr');
+
+
+
+
                     
-                    // Obtener tiempo total formateado
-                    let tiempoTotal = registro.tiempoTotal || 'N/A';
+                // Calcular tiempo total
+let tiempoTotal = 'N/A';
+if (registro.horaEntrada && registro.horaSalida) {
+    try {
+        // Asegurarnos de que tenemos un formato de fecha válido
+        const fechaBase = registro.fecha || new Date().toISOString().split('T')[0];
+        
+        // Convertir horas a objetos Date de forma más segura
+        const [horasEntrada, minutosEntrada] = registro.horaEntrada.split(':').map(Number);
+        const [horasSalida, minutosSalida] = registro.horaSalida.split(':').map(Number);
+        
+        // Crear objetos Date para entrada y salida
+        const entrada = new Date();
+        entrada.setHours(horasEntrada, minutosEntrada, 0);
+        
+        const salida = new Date();
+        salida.setHours(horasSalida, minutosSalida, 0);
+        
+        // Si la salida es antes que la entrada, podría ser del día siguiente
+        let diff;
+        if (salida < entrada) {
+            // Añadir 24 horas a la salida
+            salida.setTime(salida.getTime() + (24 * 60 * 60 * 1000));
+        }
+        
+        // Calcular la diferencia en milisegundos
+        diff = salida - entrada;
+        
+        // Convertir a horas y minutos
+        const horas = Math.floor(diff / (1000 * 60 * 60));
+        const minutos = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        
+        // Formato de tiempo
+        tiempoTotal = `${horas}h ${minutos}m`;
+        
+        // Verificar que el resultado sea un número válido
+        if (tiempoTotal.includes('NaN')) {
+            tiempoTotal = 'Error en cálculo';
+            console.error('Error en cálculo de tiempo:', { entrada: registro.horaEntrada, salida: registro.horaSalida });
+        }
+    } catch (error) {
+        console.error('Error al calcular tiempo:', error);
+        tiempoTotal = 'Error';
+    }
+}
+
+
+
                     
-                    // Si no hay tiempo total pero hay entrada y salida, calcularlo
-                    if ((!tiempoTotal || tiempoTotal === '') && registro.horaEntrada && registro.horaSalida) {
-                        tiempoTotal = calcularTiempoTotal(registro.horaEntrada, registro.horaSalida);
-                        // Actualizar el registro con el tiempo calculado
-                        registro.tiempoTotal = tiempoTotal;
-                        console.log("Tiempo calculado para registro:", tiempoTotal);
-                    }
-                    
-                    // Formatear el tiempo total para mostrarlo en la tabla
-                    let tiempoMostrar = tiempoTotal;
-                    if (tiempoTotal && tiempoTotal !== 'N/A' && tiempoTotal !== 'Error') {
-                        const partes = tiempoTotal.split(':');
-                        tiempoMostrar = `${partes[0]}h ${partes[1]}m ${partes[2]}s`;
-                    }
                     
                     // Obtener índice original en el array completo para poder eliminar
                     const indiceOriginal = memoryStorage.registrosAsistencia.findIndex(
@@ -643,14 +563,44 @@
                         r.horaSalida === registro.horaSalida
                     );
                     
-                    // Formatear la fecha para mostrar
-                    const fechaFormateada = formatearFecha(registro.fecha);
-                    console.log(`Fecha original: ${registro.fecha}, Formateada: ${fechaFormateada}`);
-                    
                     fila.innerHTML = `
-                        <td>${fechaFormateada}</td>
+                        <td>${formatearFecha(registro.fecha)}</td>
                         <td>${registro.horaEntrada || 'No registrado'}</td>
                         <td>${registro.horaSalida || 'No registrado'}</td>
-                        <td>${tiempoMostrar}</td>
+                        <td>${tiempoTotal}</td>
                         <td>
-                            <i class="bi bi-trash btn-delete" data-index="${indiceOriginal}" title="
+                            <i class="bi bi-trash btn-delete" data-index="${indiceOriginal}" title="Eliminar registro"></i>
+                        </td>
+                    `;
+                    
+                    tablaReportes.appendChild(fila);
+                });
+                
+                // Agregar eventos a los botones de eliminar
+                document.querySelectorAll('.btn-delete').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const indice = parseInt(this.getAttribute('data-index'));
+                        if (indice >= 0) {
+                            registroEliminarIndice = indice;
+                            const registro = memoryStorage.registrosAsistencia[indice];
+                            registroAEliminar.textContent = `Fecha: ${formatearFecha(registro.fecha)}, Entrada: ${registro.horaEntrada || 'No registrado'}, Salida: ${registro.horaSalida || 'No registrado'}`;
+                            modalConfirmDelete.show();
+                        }
+                    });
+                });
+            }
+
+            // Función para formatear la fecha
+            function formatearFecha(fechaStr) {
+                const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                const fecha = new Date(fechaStr);
+                return fecha.toLocaleDateString('es-ES', opciones);
+            }
+
+            // Activar el reporte diario al iniciar
+            activarBotonReporte(btnReporteDiario);
+            generarReporte('diario');
+        });
+    </script>
+</body>
+</html>
