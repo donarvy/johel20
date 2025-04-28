@@ -125,7 +125,7 @@
                         </div>
                         <textarea id="archivoRegistros" spellcheck="false"></textarea>
                         <div class="alert alert-secondary mt-2" role="alert">
-                            <small><i class="bi bi-info-circle"></i> Formato: fecha|horaEntrada|horaSalida (un registro por línea)</small>
+                            <small><i class="bi bi-info-circle"></i> Formato: fecha|horaEntrada|horaSalida|tiempoTotal (un registro por línea)</small>
                         </div>
                     </div>
                 </div>
@@ -308,6 +308,23 @@
                 }
             });
 
+            // Función para calcular tiempo total entre dos horas
+            function calcularTiempoTotal(entrada, salida, fecha) {
+                if (!entrada || !salida) return null;
+                
+                const entradaDate = new Date(`${fecha}T${entrada}`);
+                const salidaDate = new Date(`${fecha}T${salida}`);
+                
+                if (salidaDate >= entradaDate) {
+                    const diff = Math.abs(salidaDate - entradaDate);
+                    const horas = Math.floor(diff / 3600000);
+                    const minutos = Math.floor((diff % 3600000) / 60000);
+                    return `${horas}h ${minutos}m`;
+                }
+                
+                return null;
+            }
+
             // Función para registrar asistencia con persistencia
             function registrarAsistencia(tipo) {
                 const ahora = new Date();
@@ -329,7 +346,8 @@
                         registros.push({
                             fecha: fecha,
                             horaEntrada: hora,
-                            horaSalida: null
+                            horaSalida: null,
+                            tiempoTotal: null
                         });
                         mostrarMensaje(`Nueva entrada registrada: ${fecha} ${hora}`, 'success');
                     }
@@ -344,6 +362,14 @@
                     
                     // Actualizar la hora de salida
                     entradaSinSalida.horaSalida = hora;
+                    
+                    // Calcular y guardar el tiempo total
+                    entradaSinSalida.tiempoTotal = calcularTiempoTotal(
+                        entradaSinSalida.horaEntrada, 
+                        entradaSinSalida.horaSalida, 
+                        entradaSinSalida.fecha
+                    );
+                    
                     mostrarMensaje(`Salida registrada: ${fecha} ${hora}`, 'success');
                 }
                 
@@ -368,7 +394,8 @@
             function actualizarArchivoTextarea() {
                 let contenido = '';
                 memoryStorage.registrosAsistencia.forEach(registro => {
-                    contenido += `${registro.fecha}|${registro.horaEntrada || ''}|${registro.horaSalida || ''}\n`;
+                    // Incluimos el tiempo total en el archivo
+                    contenido += `${registro.fecha}|${registro.horaEntrada || ''}|${registro.horaSalida || ''}|${registro.tiempoTotal || ''}\n`;
                 });
                 archivoRegistros.value = contenido;
             }
@@ -384,10 +411,19 @@
                     if (linea) {
                         const partes = linea.split('|');
                         if (partes.length >= 2) {
+                            // Si el tiempo total no está en el archivo, lo calculamos
+                            let tiempoTotal = partes[3] || null;
+                            
+                            // Si no hay tiempo total pero hay entrada y salida, lo calculamos
+                            if (!tiempoTotal && partes[1] && partes[2]) {
+                                tiempoTotal = calcularTiempoTotal(partes[1], partes[2], partes[0]);
+                            }
+                            
                             registros.push({
                                 fecha: partes[0],
                                 horaEntrada: partes[1] || null,
-                                horaSalida: partes[2] || null
+                                horaSalida: partes[2] || null,
+                                tiempoTotal: tiempoTotal
                             });
                         }
                     }
@@ -502,18 +538,17 @@
                 registros.forEach(registro => {
                     const fila = document.createElement('tr');
                     
-                    // Calcular tiempo total
-                    let tiempoTotal = 'N/A';
-                    if (registro.horaEntrada && registro.horaSalida) {
-                        const entrada = new Date(`${registro.fecha}T${registro.horaEntrada}`);
-                        const salida = new Date(`${registro.fecha}T${registro.horaSalida}`);
+                    // Usar el tiempo total almacenado o calcularlo si no existe
+                    let tiempoTotal = registro.tiempoTotal || 'N/A';
+                    
+                    // Si no hay tiempo total pero hay entrada y salida, calcularlo nuevamente
+                    if (!registro.tiempoTotal && registro.horaEntrada && registro.horaSalida) {
+                        tiempoTotal = calcularTiempoTotal(registro.horaEntrada, registro.horaSalida, registro.fecha);
                         
-                        if (salida >= entrada) {
-                            const diff = Math.abs(salida - entrada);
-                            const horas = Math.floor(diff / 3600000);
-                            const minutos = Math.floor((diff % 3600000) / 60000);
-                            tiempoTotal = `${horas}h ${minutos}m`;
-                        }
+                        // Actualizar el registro con el tiempo calculado
+                        registro.tiempoTotal = tiempoTotal;
+                        guardarDatos();
+                        actualizarArchivoTextarea();
                     }
                     
                     // Obtener índice original en el array completo para poder eliminar
@@ -527,7 +562,7 @@
                         <td>${formatearFecha(registro.fecha)}</td>
                         <td>${registro.horaEntrada || 'No registrado'}</td>
                         <td>${registro.horaSalida || 'No registrado'}</td>
-                        <td>${tiempoTotal}</td>
+                        <td>${tiempoTotal || 'N/A'}</td>
                         <td>
                             <i class="bi bi-trash btn-delete" data-index="${indiceOriginal}" title="Eliminar registro"></i>
                         </td>
@@ -543,7 +578,7 @@
                         if (indice >= 0) {
                             registroEliminarIndice = indice;
                             const registro = memoryStorage.registrosAsistencia[indice];
-                            registroAEliminar.textContent = `Fecha: ${formatearFecha(registro.fecha)}, Entrada: ${registro.horaEntrada || 'No registrado'}, Salida: ${registro.horaSalida || 'No registrado'}`;
+                            registroAEliminar.textContent = `Fecha: ${formatearFecha(registro.fecha)}, Entrada: ${registro.horaEntrada || 'No registrado'}, Salida: ${registro.horaSalida || 'No registrado'}, Tiempo: ${registro.tiempoTotal || 'N/A'}`;
                             modalConfirmDelete.show();
                         }
                     });
@@ -551,19 +586,11 @@
             }
 
             // Función para formatear la fecha
-          function formatearFecha(fechaStr) {
-    const opciones = { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        timeZone: 'UTC' // Añade esta línea
-    };
-    // Asegúrate de que la fecha se interprete como UTC
-    const [year, month, day] = fechaStr.split('-');
-    const fecha = new Date(Date.UTC(year, month - 1, day));
-    return fecha.toLocaleDateString('es-ES', opciones);
-}
+            function formatearFecha(fechaStr) {
+                const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                const fecha = new Date(fechaStr);
+                return fecha.toLocaleDateString('es-ES', opciones);
+            }
 
             // Activar el reporte diario al iniciar
             activarBotonReporte(btnReporteDiario);
