@@ -368,7 +368,7 @@
             function actualizarArchivoTextarea() {
                 let contenido = '';
                 memoryStorage.registrosAsistencia.forEach(registro => {
-                    contenido += `${registro.fecha}|${registro.horaEntrada || ''}|${registro.horaSalida || ''}|${registro.tiempoTotal || ''}\n`;
+                    contenido += `${registro.fecha}|${registro.horaEntrada || ''}|${registro.horaSalida || ''}\n`;
                 });
                 archivoRegistros.value = contenido;
             }
@@ -583,19 +583,27 @@ if (registro.horaEntrada && registro.horaSalida) {
                         if (indice >= 0) {
                             registroEliminarIndice = indice;
                             const registro = memoryStorage.registrosAsistencia[indice];
-                            registroAEliminar.textContent = `Fecha: ${(registro.fecha)}, Entrada: ${registro.horaEntrada || 'No registrado'}, Salida: ${registro.horaSalida || 'No registrado'}`;
+                            registroAEliminar.textContent = `Fecha: ${formatearFecha(registro.fecha)}, Entrada: ${registro.horaEntrada || 'No registrado'}, Salida: ${registro.horaSalida || 'No registrado'}`;
                             modalConfirmDelete.show();
                         }
                     });
                 });
             }
 
-            Función para formatear la fecha
-            function formatearFecha(fechaStr) {
-              const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            const fecha = new Date(fechaStr);
-           return fecha.toLocaleDateString('es-ES', opciones);
-           }
+            // Función para formatear la fecha
+           function formatearFecha(fechaStr) {
+    const opciones = { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        timeZone: 'UTC' // Añade esta línea
+    };
+    // Asegúrate de que la fecha se interprete como UTC
+    const [year, month, day] = fechaStr.split('-');
+    const fecha = new Date(Date.UTC(year, month - 1, day));
+    return fecha.toLocaleDateString('es-ES', opciones);
+}
 
             // Activar el reporte diario al iniciar
             activarBotonReporte(btnReporteDiario);
