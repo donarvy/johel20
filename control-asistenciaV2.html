@@ -515,7 +515,51 @@ function actualizarArchivoTextarea() {
             }
 
             // Función para mostrar la tabla de reportes
-            function mostrarTablaReportes(registros) {
+
+function mostrarTablaReportes(registros) {
+    tablaReportes.innerHTML = '';
+    
+    registros.forEach(registro => {
+        // ↓↓↓ Cálculo del tiempo total (asegúrate de que esté activo) ↓↓↓
+        let tiempoTotal = 'N/A';
+        if (registro.horaEntrada && registro.horaSalida) {
+            const [hEntrada, mEntrada] = registro.horaEntrada.split(':').map(Number);
+            const [hSalida, mSalida] = registro.horaSalida.split(':').map(Number);
+            const diffMinutos = (hSalida * 60 + mSalida) - (hEntrada * 60 + mEntrada);
+            const horas = Math.floor(diffMinutos / 60);
+            const minutos = diffMinutos % 60;
+            tiempoTotal = `${horas}h ${minutos}m`;
+            registro.tiempoTotal = tiempoTotal; // Guarda en el registro
+        }
+
+        // ↓↓↓ Asegúrate de que la tabla use la variable `tiempoTotal` ↓↓↓
+        const fila = document.createElement('tr');
+        fila.innerHTML = `
+            <td>${formatearFecha(registro.fecha)}</td>
+            <td>${registro.horaEntrada || 'No registrado'}</td>
+            <td>${registro.horaSalida || 'No registrado'}</td>
+            <td>${tiempoTotal}</td> <!-- Usa la variable calculada aquí -->
+            <td><i class="bi bi-trash btn-delete" data-index="${indiceOriginal}"></i></td>
+        `;
+        tablaReportes.appendChild(fila);
+    });
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            
+           /* function mostrarTablaReportes(registros) {
                 tablaReportes.innerHTML = '';
                 
                 if (registros.length === 0) {
@@ -561,7 +605,7 @@ function actualizarArchivoTextarea() {
                     `;
                     
                     tablaReportes.appendChild(fila);
-                });
+                });*/
                 
                 // Agregar eventos a los botones de eliminar
                 document.querySelectorAll('.btn-delete').forEach(btn => {
