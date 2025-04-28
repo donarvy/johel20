@@ -594,7 +594,8 @@ if (registro.horaEntrada && registro.horaSalida) {
             }
 
             // Función para formatear la fecha
-           function formatearFecha(fechaStr) {
+           
+function formatearFecha(fechaStr) {
     const opciones = { 
         weekday: 'long', 
         year: 'numeric', 
@@ -607,7 +608,6 @@ if (registro.horaEntrada && registro.horaSalida) {
     const fecha = new Date(Date.UTC(year, month - 1, day));
     return fecha.toLocaleDateString('es-ES', opciones);
 }
-
             // Activar el reporte diario al iniciar
             activarBotonReporte(btnReporteDiario);
             generarReporte('diario');
