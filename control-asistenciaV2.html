@@ -368,7 +368,7 @@
             function actualizarArchivoTextarea() {
                 let contenido = '';
                 memoryStorage.registrosAsistencia.forEach(registro => {
-                    contenido += `${registro.fecha}|${registro.horaEntrada || ''}|${registro.horaSalida || ''}\n`;
+                    contenido += `${registro.fecha}|${registro.horaEntrada || ''}|${registro.horaSalida || ''}|${registro.tiempoTotal || ''}\n`;
                 });
                 archivoRegistros.value = contenido;
             }
