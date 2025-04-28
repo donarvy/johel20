@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Asistencia</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        .card {
+            margin-bottom: 20px;
+        }
+        .btn-control {
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .report-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .btn-delete {
+            cursor: pointer;
+            color: #dc3545;
+        }
+        .btn-delete:hover {
+            color: #b02a37;
+        }
+        #archivoRegistros {
+            width: 100%;
+            height: 150px;
+            font-family: monospace;
+            font-size: 12px;
+            background-color: #f8f9fa;
+            border: 1px solid #ced4da;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .btn-active {
+            background-color: #0d6efd !important; /* Azul más oscuro para botón activo */
+            border-color: #0a58ca !important;
+            color: white !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="text-center">Control de Asistencia</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-center mb-4">
+                            <button id="btnEntrada" class="btn btn-success btn-lg btn-control">Hora de Entrada</button>
+                            <button id="btnSalida" class="btn btn-danger btn-lg btn-control">Hora de Salida</button>
+                        </div>
+                        <div class="alert alert-info" id="mensajeRegistro" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h4 class="text-center">Reportes de Asistencia</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="fechaInicio" class="form-label">Fecha de inicio:</label>
+                                <input type="date" class="form-control" id="fechaInicio">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="fechaFin" class="form-label">Fecha de fin:</label>
+                                <input type="date" class="form-control" id="fechaFin">
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-center mb-4">
+                            <button id="btnReporteDiario" class="btn btn-info btn-control btn-reporte">Reporte Diario</button>
+                            <button id="btnReporteSemanal" class="btn btn-info btn-control btn-reporte">Reporte Semanal</button>
+                            <button id="btnReporteMensual" class="btn btn-info btn-control btn-reporte">Reporte Mensual</button>
+                            <button id="btnReporteTodos" class="btn btn-info btn-control btn-reporte">Todos los Registros</button>
+                        </div>
+                        <div class="report-container">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Hora de Entrada</th>
+                                        <th>Hora de Salida</th>
+                                        <th>Tiempo Total</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaReportes">
+                                    <!-- Los reportes se cargarán aquí -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <h4 class="text-center">Archivo de Registros (TXT)</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <h5>Datos almacenados en archivo:</h5>
+                            <div>
+                                <button id="btnGuardarTXT" class="btn btn-primary btn-sm">Guardar Cambios</button>
+                                <button id="btnDescargarTXT" class="btn btn-success btn-sm ms-2">Descargar TXT</button>
+                                <button id="btnCargarTXT" class="btn btn-warning btn-sm ms-2">Cargar desde TXT</button>
+                                <input type="file" id="importTXTFile" accept=".txt" style="display: none;">
+                            </div>
+                        </div>
+                        <textarea id="archivoRegistros" spellcheck="false"></textarea>
+                        <div class="alert alert-secondary mt-2" role="alert">
+                            <small><i class="bi bi-info-circle"></i> Formato: fecha|horaEntrada|horaSalida (un registro por línea)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de confirmación para eliminar -->
+        <div class="modal fade" id="modalConfirmDelete" tabindex="-1" aria-labelledby="modalConfirmDeleteLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title" id="modalConfirmDeleteLabel">Confirmar eliminación</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        ¿Está seguro de que desea eliminar este registro de asistencia?
+                        <p id="registroAEliminar" class="mt-2 text-muted"></p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-danger" id="btnConfirmDelete">Eliminar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap y JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Almacenamiento con persistencia en localStorage
+            let memoryStorage = {
+                registrosAsistencia: []
+            };
+
+            // Cargar datos del localStorage al iniciar
+            function cargarDatosGuardados() {
+                const datosGuardados = localStorage.getItem('registrosAsistencia');
+                if (datosGuardados) {
+                    try {
+                        memoryStorage.registrosAsistencia = JSON.parse(datosGuardados);
+                    } catch (e) {
+                        console.error('Error al cargar datos guardados:', e);
+                        memoryStorage.registrosAsistencia = [];
+                    }
+                }
+            }
+
+            // Guardar datos en localStorage
+            function guardarDatos() {
+                localStorage.setItem('registrosAsistencia', JSON.stringify(memoryStorage.registrosAsistencia));
+            }
+
+            // Cargar datos al iniciar
+            cargarDatosGuardados();
+
+            // Variable para mantener el índice del registro a eliminar
+            let registroEliminarIndice = -1;
+            
+            // Variable para mantener el botón de reporte activo
+            let botonReporteActivo = null;
+
+            // Elementos del DOM
+            const btnEntrada = document.getElementById('btnEntrada');
+            const btnSalida = document.getElementById('btnSalida');
+            const mensajeRegistro = document.getElementById('mensajeRegistro');
+            const btnReporteDiario = document.getElementById('btnReporteDiario');
+            const btnReporteSemanal = document.getElementById('btnReporteSemanal');
+            const btnReporteMensual = document.getElementById('btnReporteMensual');
+            const btnReporteTodos = document.getElementById('btnReporteTodos');
+            const tablaReportes = document.getElementById('tablaReportes');
+            const fechaInicio = document.getElementById('fechaInicio');
+            const fechaFin = document.getElementById('fechaFin');
+            const archivoRegistros = document.getElementById('archivoRegistros');
+            const btnGuardarTXT = document.getElementById('btnGuardarTXT');
+            const btnDescargarTXT = document.getElementById('btnDescargarTXT');
+            const btnCargarTXT = document.getElementById('btnCargarTXT');
+            const importTXTFile = document.getElementById('importTXTFile');
+            const registroAEliminar = document.getElementById('registroAEliminar');
+            const btnConfirmDelete = document.getElementById('btnConfirmDelete');
+            const botonesReporte = document.querySelectorAll('.btn-reporte');
+            
+            // Modal de confirmación
+            const modalConfirmDelete = new bootstrap.Modal(document.getElementById('modalConfirmDelete'));
+            
+            // Establecer las fechas por defecto
+            const hoy = new Date();
+            fechaFin.valueAsDate = hoy;
+            const unMesAtras = new Date();
+            unMesAtras.setMonth(unMesAtras.getMonth() - 1);
+            fechaInicio.valueAsDate = unMesAtras;
+
+            // Actualizar el textarea con los datos cargados
+            actualizarArchivoTextarea();
+
+            // Evento para botón de entrada
+            btnEntrada.addEventListener('click', function() {
+                registrarAsistencia('entrada');
+            });
+
+            // Evento para botón de salida
+            btnSalida.addEventListener('click', function() {
+                registrarAsistencia('salida');
+            });
+
+            // Eventos para botones de reportes
+            btnReporteDiario.addEventListener('click', function() {
+                activarBotonReporte(this);
+                generarReporte('diario');
+            });
+
+            btnReporteSemanal.addEventListener('click', function() {
+                activarBotonReporte(this);
+                generarReporte('semanal');
+            });
+
+            btnReporteMensual.addEventListener('click', function() {
+                activarBotonReporte(this);
+                generarReporte('mensual');
+            });
+
+            btnReporteTodos.addEventListener('click', function() {
+                activarBotonReporte(this);
+                generarReporte('todos');
+            });
+
+            // Función para activar botón de reporte actual
+            function activarBotonReporte(boton) {
+                // Quitar clase activa de todos los botones
+                botonesReporte.forEach(btn => {
+                    btn.classList.remove('btn-active');
+                });
+                
+                // Añadir clase activa al botón actual
+                boton.classList.add('btn-active');
+                botonReporteActivo = boton;
+            }
+
+            // Guardar cambios desde textarea
+            btnGuardarTXT.addEventListener('click', function() {
+                leerDesdeTextarea();
+                mostrarMensaje('Cambios guardados correctamente', 'success');
+                generarReporte('todos');
+            });
+
+            // Descargar TXT
+            btnDescargarTXT.addEventListener('click', function() {
+                descargarArchivoTXT();
+            });
+
+            // Cargar desde TXT
+            btnCargarTXT.addEventListener('click', function() {
+                importTXTFile.click();
+            });
+
+            importTXTFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        archivoRegistros.value = e.target.result;
+                        leerDesdeTextarea();
+                        mostrarMensaje('Archivo TXT cargado correctamente', 'success');
+                        generarReporte('todos');
+                    };
+                    reader.readAsText(file);
+                }
+            });
+
+            // Confirmar eliminación
+            btnConfirmDelete.addEventListener('click', function() {
+                if (registroEliminarIndice !== -1) {
+                    memoryStorage.registrosAsistencia.splice(registroEliminarIndice, 1);
+                    guardarDatos(); // Guardar en localStorage después de eliminar
+                    actualizarArchivoTextarea();
+                    modalConfirmDelete.hide();
+                    mostrarMensaje('Registro eliminado correctamente', 'success');
+                    generarReporte('todos');
+                }
+            });
+
+            // Función para registrar asistencia con persistencia
+            function registrarAsistencia(tipo) {
+                const ahora = new Date();
+                const fecha = ahora.toISOString().split('T')[0]; // YYYY-MM-DD
+                const hora = ahora.toLocaleTimeString(); // HH:MM:SS
+                
+                let registros = memoryStorage.registrosAsistencia;
+                
+                if (tipo === 'entrada') {
+                    // Verificar si ya hay una entrada para hoy sin salida registrada
+                    const entradaHoySinSalida = registros.find(r => r.fecha === fecha && r.horaEntrada && !r.horaSalida);
+                    
+                    if (entradaHoySinSalida) {
+                        // Si hay una entrada sin salida, actualizamos la hora de entrada
+                        entradaHoySinSalida.horaEntrada = hora;
+                        mostrarMensaje(`Entrada actualizada: ${fecha} ${hora}`, 'success');
+                    } else {
+                        // Si no hay una entrada sin salida, creamos un nuevo registro
+                        registros.push({
+                            fecha: fecha,
+                            horaEntrada: hora,
+                            horaSalida: null
+                        });
+                        mostrarMensaje(`Nueva entrada registrada: ${fecha} ${hora}`, 'success');
+                    }
+                } else if (tipo === 'salida') {
+                    // Buscar registro sin salida para actualizarlo
+                    const entradaSinSalida = registros.find(r => r.fecha === fecha && r.horaEntrada && !r.horaSalida);
+                    
+                    if (!entradaSinSalida) {
+                        mostrarMensaje('No hay entrada sin salida registrada para hoy.', 'warning');
+                        return;
+                    }
+                    
+                    // Actualizar la hora de salida
+                    entradaSinSalida.horaSalida = hora;
+                    mostrarMensaje(`Salida registrada: ${fecha} ${hora}`, 'success');
+                }
+                
+                // Guardar datos actualizados
+                guardarDatos();
+                actualizarArchivoTextarea();
+                
+                // Actualizar el reporte activo o el diario por defecto
+                if (botonReporteActivo) {
+                    // Determinar qué reporte generar según el botón activo
+                    const id = botonReporteActivo.id;
+                    if (id === 'btnReporteDiario') generarReporte('diario');
+                    else if (id === 'btnReporteSemanal') generarReporte('semanal');
+                    else if (id === 'btnReporteMensual') generarReporte('mensual');
+                    else generarReporte('todos');
+                } else {
+                    generarReporte('diario');
+                }
+            }
+
+            // Función para actualizar el textarea con los datos actuales
+            function actualizarArchivoTextarea() {
+                let contenido = '';
+                memoryStorage.registrosAsistencia.forEach(registro => {
+                    contenido += `${registro.fecha}|${registro.horaEntrada || ''}|${registro.horaSalida || ''}\n`;
+                });
+                archivoRegistros.value = contenido;
+            }
+
+            // Función para leer los datos desde el textarea
+            function leerDesdeTextarea() {
+                const contenido = archivoRegistros.value;
+                const lineas = contenido.split('\n');
+                const registros = [];
+                
+                lineas.forEach(linea => {
+                    linea = linea.trim();
+                    if (linea) {
+                        const partes = linea.split('|');
+                        if (partes.length >= 2) {
+                            registros.push({
+                                fecha: partes[0],
+                                horaEntrada: partes[1] || null,
+                                horaSalida: partes[2] || null
+                            });
+                        }
+                    }
+                });
+                
+                memoryStorage.registrosAsistencia = registros;
+                guardarDatos(); // Guardar en localStorage después de actualizar
+            }
+
+            // Función para descargar el archivo TXT
+            function descargarArchivoTXT() {
+                const contenido = archivoRegistros.value;
+                const blob = new Blob([contenido], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'registros-asistencia.txt';
+                document.body.appendChild(a);
+                a.click();
+                
+                setTimeout(function() {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 0);
+            }
+
+            // Función para mostrar mensajes
+            function mostrarMensaje(mensaje, tipo) {
+                mensajeRegistro.textContent = mensaje;
+                mensajeRegistro.style.display = 'block';
+                
+                // Cambiar clase del mensaje según tipo
+                mensajeRegistro.className = 'alert';
+                switch(tipo) {
+                    case 'success':
+                        mensajeRegistro.classList.add('alert-success');
+                        break;
+                    case 'warning':
+                        mensajeRegistro.classList.add('alert-warning');
+                        break;
+                    default:
+                        mensajeRegistro.classList.add('alert-info');
+                }
+                
+                // Ocultar después de 3 segundos
+                setTimeout(() => {
+                    mensajeRegistro.style.display = 'none';
+                }, 3000);
+            }
+
+            // Función para generar reportes
+            function generarReporte(tipo) {
+                const registros = memoryStorage.registrosAsistencia;
+                let registrosFiltrados = [];
+                
+                const inicio = new Date(fechaInicio.value);
+                const fin = new Date(fechaFin.value);
+                fin.setHours(23, 59, 59); // Fin del día
+                
+                const hoy = new Date();
+                const inicioSemana = new Date(hoy);
+                inicioSemana.setDate(hoy.getDate() - hoy.getDay()); // Inicio de la semana (domingo)
+                
+                const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1); // Primer día del mes
+                
+                switch(tipo) {
+                    case 'diario':
+                        // Filtrar por fecha seleccionada o hoy
+                        const fechaHoy = hoy.toISOString().split('T')[0];
+                        registrosFiltrados = registros.filter(r => r.fecha === fechaInicio.value || r.fecha === fechaHoy);
+                        break;
+                    case 'semanal':
+                        // Filtrar registros de esta semana
+                        registrosFiltrados = registros.filter(r => {
+                            const fechaReg = new Date(r.fecha);
+                            return fechaReg >= inicioSemana && fechaReg <= hoy;
+                        });
+                        break;
+                    case 'mensual':
+                        // Filtrar registros de este mes
+                        registrosFiltrados = registros.filter(r => {
+                            const fechaReg = new Date(r.fecha);
+                            return fechaReg >= inicioMes && fechaReg <= hoy;
+                        });
+                        break;
+                    case 'todos':
+                        // Filtrar por rango de fechas seleccionado
+                        registrosFiltrados = registros.filter(r => {
+                            const fechaReg = new Date(r.fecha);
+                            return fechaReg >= inicio && fechaReg <= fin;
+                        });
+                        break;
+                }
+                
+                mostrarTablaReportes(registrosFiltrados);
+            }
+
+            // Función para mostrar la tabla de reportes
+            function mostrarTablaReportes(registros) {
+                tablaReportes.innerHTML = '';
+                
+                if (registros.length === 0) {
+                    const fila = document.createElement('tr');
+                    fila.innerHTML = '<td colspan="5" class="text-center">No hay registros en este período</td>';
+                    tablaReportes.appendChild(fila);
+                    return;
+                }
+                
+                registros.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+                
+                registros.forEach(registro => {
+                    const fila = document.createElement('tr');
+                    
+                    // Calcular tiempo total
+                    let tiempoTotal = 'N/A';
+                    if (registro.horaEntrada && registro.horaSalida) {
+                        const entrada = new Date(`${registro.fecha}T${registro.horaEntrada}`);
+                        const salida = new Date(`${registro.fecha}T${registro.horaSalida}`);
+                        
+                        if (salida >= entrada) {
+                            const diff = Math.abs(salida - entrada);
+                            const horas = Math.floor(diff / 3600000);
+                            const minutos = Math.floor((diff % 3600000) / 60000);
+                            tiempoTotal = `${horas}h ${minutos}m`;
+                        }
+                    }
+                    
+                    // Obtener índice original en el array completo para poder eliminar
+                    const indiceOriginal = memoryStorage.registrosAsistencia.findIndex(
+                        r => r.fecha === registro.fecha && 
+                        r.horaEntrada === registro.horaEntrada && 
+                        r.horaSalida === registro.horaSalida
+                    );
+                    
+                    fila.innerHTML = `
+                        <td>${formatearFecha(registro.fecha)}</td>
+                        <td>${registro.horaEntrada || 'No registrado'}</td>
+                        <td>${registro.horaSalida || 'No registrado'}</td>
+                        <td>${tiempoTotal}</td>
+                        <td>
+                            <i class="bi bi-trash btn-delete" data-index="${indiceOriginal}" title="Eliminar registro"></i>
+                        </td>
+                    `;
+                    
+                    tablaReportes.appendChild(fila);
+                });
+                
+                // Agregar eventos a los botones de eliminar
+                document.querySelectorAll('.btn-delete').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const indice = parseInt(this.getAttribute('data-index'));
+                        if (indice >= 0) {
+                            registroEliminarIndice = indice;
+                            const registro = memoryStorage.registrosAsistencia[indice];
+                            registroAEliminar.textContent = `Fecha: ${formatearFecha(registro.fecha)}, Entrada: ${registro.horaEntrada || 'No registrado'}, Salida: ${registro.horaSalida || 'No registrado'}`;
+                            modalConfirmDelete.show();
+                        }
+                    });
+                });
+            }
+
+            // Función para formatear la fecha
+            function formatearFecha(fechaStr) {
+                const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                const fecha = new Date(fechaStr);
+                return fecha.toLocaleDateString('es-ES', opciones);
+            }
+
+            // Activar el reporte diario al iniciar
+            activarBotonReporte(btnReporteDiario);
+            generarReporte('diario');
+        });
+    </script>
+</body>
+</html>
