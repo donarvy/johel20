@@ -391,47 +391,39 @@
             }
 
             // Función para actualizar el textarea con los datos actuales
-            function actualizarArchivoTextarea() {
-                let contenido = '';
-                memoryStorage.registrosAsistencia.forEach(registro => {
-                    // Incluimos el tiempo total en el archivo
-                    contenido += `${registro.fecha}|${registro.horaEntrada || ''}|${registro.horaSalida || ''}|${registro.tiempoTotal || ''}\n`;
-                });
-                archivoRegistros.value = contenido;
-            }
-
+            
+function actualizarArchivoTextarea() {
+    let contenido = '';
+    memoryStorage.registrosAsistencia.forEach(registro => {
+        // Asegúrate de incluir el tiempoTotal al final
+        contenido += `${registro.fecha}|${registro.horaEntrada || ''}|${registro.horaSalida || ''}|${registro.tiempoTotal || ''}\n`;
+    });
+    archivoRegistros.value = contenido;
+}
             // Función para leer los datos desde el textarea
-            function leerDesdeTextarea() {
-                const contenido = archivoRegistros.value;
-                const lineas = contenido.split('\n');
-                const registros = [];
-                
-                lineas.forEach(linea => {
-                    linea = linea.trim();
-                    if (linea) {
-                        const partes = linea.split('|');
-                        if (partes.length >= 2) {
-                            // Si el tiempo total no está en el archivo, lo calculamos
-                            let tiempoTotal = partes[3] || null;
-                            
-                            // Si no hay tiempo total pero hay entrada y salida, lo calculamos
-                            if (!tiempoTotal && partes[1] && partes[2]) {
-                                tiempoTotal = calcularTiempoTotal(partes[1], partes[2], partes[0]);
-                            }
-                            
-                            registros.push({
-                                fecha: partes[0],
-                                horaEntrada: partes[1] || null,
-                                horaSalida: partes[2] || null,
-                                tiempoTotal: tiempoTotal
-                            });
-                        }
-                    }
+ function leerDesdeTextarea() {
+    const contenido = archivoRegistros.value;
+    const lineas = contenido.split('\n');
+    const registros = [];
+    
+    lineas.forEach(linea => {
+        linea = linea.trim();
+        if (linea) {
+            const partes = linea.split('|');
+            if (partes.length >= 2) {
+                registros.push({
+                    fecha: partes[0],
+                    horaEntrada: partes[1] || null,
+                    horaSalida: partes[2] || null,
+                    tiempoTotal: partes[3] || null // Añade esta línea para cargar el tiempoTotal
                 });
-                
-                memoryStorage.registrosAsistencia = registros;
-                guardarDatos(); // Guardar en localStorage después de actualizar
             }
+        }
+    });
+    
+    memoryStorage.registrosAsistencia = registros;
+    guardarDatos();
+}
 
             // Función para descargar el archivo TXT
             function descargarArchivoTXT() {
